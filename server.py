@@ -13,6 +13,9 @@ endpoints = {
           'predicate': rdflib.URIRef('http://dbpedia.org/property/runtime'),
           'name':       'runtime'
           },{
+          'predicate': rdflib.URIRef('http://dbpedia.org/property/gross'),
+          'name':       'gross'
+          },{
           'predicate': rdflib.URIRef('http://dbpedia.org/ontology/starring'),
           'name':       'starring'
           },{
@@ -78,12 +81,18 @@ def get_attributes(entity, uri):
         query_results.append(result)
     return list_compactor(query_results)
 
+def create_url(entity, uri):
+    url = "/rest/{}/{}".format(entity, uri.encode())
+    link = '<a href="{}">{}</a>'.format(url, uri.encode())
+    return link
+
+
 @app.route('/rest/<endpoint>/')
 def list_all(endpoint=None):
     if endpoint in endpoints.keys():
         entities = query_explore(endpoint)
-        print(len(dentities))
-        return str(entities)
+        print(len(entities))
+        return '\n'.join([create_url(endpoint, x) for x in entities])
     return 'Endpoint not found' 
 
 @app.route('/rest/<endpoint>/<path:uri>/')
