@@ -14,7 +14,8 @@ endpoints = {
           'name':       'runtime'
           },{
           'predicate': rdflib.URIRef('http://dbpedia.org/property/gross'),
-          'name':       'gross'
+          'name':       'gross',
+          'optional':   'true'
           },{
           'predicate': rdflib.URIRef('http://dbpedia.org/ontology/starring'),
           'name':       'starring'
@@ -67,9 +68,14 @@ def get_attributes(entity, uri):
     internal = []
     for attribute in endpoints[entity]['attributes']:
         bindings.append("?{}".format(attribute['name']))
-        internal.append("<{}> {} ?{} .".format(uri,
-            attribute['predicate'].n3(),
-            attribute['name']))
+        if 'optional' in attribute:
+            internal.append("OPTIONAL {{ <{}> {} ?{} }} .".format(uri,
+                attribute['predicate'].n3(),
+                attribute['name']))
+        else:
+            internal.append("<{}> {} ?{} .".format(uri,
+                attribute['predicate'].n3(),
+                attribute['name']))
     query_string = attribute_query.format(' '.join(bindings), ' '.join(internal))
     print(query_string)
     query = graph.query(query_string)
@@ -77,7 +83,9 @@ def get_attributes(entity, uri):
     for q in query.bindings:
         result = {}
         for attribute in endpoints[entity]['attributes']:
-            result[attribute['name']] = q[rdflib.term.Variable(attribute['name'])].encode()
+            new_key = rdflib.term.Variable(attribute['name'])
+            if new_key in q:
+                result[attribute['name']] = q[new_key].encode()
         query_results.append(result)
     return list_compactor(query_results)
 
