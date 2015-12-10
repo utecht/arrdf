@@ -1,63 +1,63 @@
 import rdflib
 from flask import Flask
 
-endpoints = { 'film': 
-        { 'endpoint':   'film',
-          'rdftype':    rdflib.URIRef('http://dbpedia.org/ontology/Film'),
-          'update':     'false',
-          'attributes': [{
-              'predicate': rdflib.URIRef('http://dbpedia.org/property/name'),
-              'name':       'title',
+endpoints = {
+'film': 
+    { 'endpoint':   'film',
+      'rdftype':    rdflib.URIRef('http://dbpedia.org/ontology/Film'),
+      'update':     'false',
+      'attributes': [{
+          'predicate': rdflib.URIRef('http://dbpedia.org/property/name'),
+          'name':       'title',
           },{
-              'predicate': rdflib.URIRef('http://dbpedia.org/property/runtime'),
-              'name':       'runtime'
+          'predicate': rdflib.URIRef('http://dbpedia.org/property/runtime'),
+          'name':       'runtime'
           },{
-              'predicate': rdflib.URIRef('http://dbpedia.org/ontology/starring'),
-              'name':       'starring'
+          'predicate': rdflib.URIRef('http://dbpedia.org/ontology/starring'),
+          'name':       'starring'
           },{
-              'predicate': rdflib.URIRef('http://purl.org/dc/terms/subject'),
-              'name':       'subject'
-          }]
-          }
-        }
+          'predicate': rdflib.URIRef('http://purl.org/dc/terms/subject'),
+          'name':       'subject'
+      }]
+  }
+}
 
-# server = 'http://localhost:8080/openrdf-sesame/repositories/movies'
-server = 'http://dbpedia.org/sparql'
+sparql_endpoint = 'http://dbpedia.org/sparql'
 
 graph = rdflib.ConjunctiveGraph('SPARQLStore')
-graph.open(server)
+graph.open(sparql_endpoint)
 
 app = Flask(__name__)
 
-list_query = """
+exploration_query = """
 select ?entity where {{
     ?entity rdf:type {} .
 }}"""
 
 attribute_query = "select {} where {{ {} }}"
 
-def list_compactor(l):
-    if len(l) == 0:
-        return l
-    ret = {}
-    for key in l[0].keys():
+def list_compactor(input_list):
+    if len(input_list) == 0:
+        return input_list
+    compacted_dict = {}
+    for key in input_list[0].keys():
         s = set()
-        for d in l:
+        for d in input_list:
             s.add(d[key])
         if len(s) == 1:
-            ret[key] = s.pop()
+            compacted_dict[key] = s.pop()
         else:
-            ret[key] = list(s)
-    return ret
+            compacted_dict[key] = list(s)
+    return compacted_dict
 
 
-def list_entities(entity):
-    query = graph.query(list_query.format(endpoints[entity]['rdftype'].n3()))
-    ret = []
+def query_explore(entity):
+    query = graph.query(exploration_query.format(endpoints[entity]['rdftype'].n3()))
+    entities = []
     for e in query.bindings:
         print(e)
-        ret.append(e[rdflib.term.Variable('entity')])
-    return ret
+        entities.append(e[rdflib.term.Variable('entity')])
+    return entities
     
 def get_attributes(entity, uri):
     bindings = []
@@ -70,18 +70,18 @@ def get_attributes(entity, uri):
     query_string = attribute_query.format(' '.join(bindings), ' '.join(internal))
     print(query_string)
     query = graph.query(query_string)
-    ret = []
+    query_results = []
     for q in query.bindings:
-        d = {}
+        result = {}
         for attribute in endpoints[entity]['attributes']:
-            d[attribute['name']] = q[rdflib.term.Variable(attribute['name'])].encode()
-        ret.append(d)
-    return list_compactor(ret)
+            result[attribute['name']] = q[rdflib.term.Variable(attribute['name'])].encode()
+        query_results.append(result)
+    return list_compactor(query_results)
 
 @app.route('/rest/<endpoint>/')
 def list_all(endpoint=None):
     if endpoint in endpoints.keys():
-        entities = list_entities(endpoint)
+        entities = query_explore(endpoint)
         print(len(dentities))
         return str(entities)
     return 'Endpoint not found' 
